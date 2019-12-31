@@ -1,6 +1,8 @@
 공부 하다가 소소하게 알게된 것들을 모아놓은 곳.
 
+
 ########################################################################################
+
 reference : https://stackoverflow.com/questions/49836676/error-after-upgrading-pip-cannot-import-name-main
 
 간혹 pip 업데이트를 하고 나면 다음과 같은 오류가 뜰때가 있다
@@ -20,4 +22,10 @@ pip update 이후(/usr/bin/pip 파일을 변경)
 	if __name__ == '__main__':
 	     sys.exit(__main__._main())
 다음과 같이 변경하여서 해결하였다.
+
+########################################################################################
+
+json 보기 편하게 바꿔주는 사이트 : https://jsonformatter.curiousconcept.com/#
+URL Deconding			 : https://heavenly-appear.tistory.com/176
+
 ########################################################################################

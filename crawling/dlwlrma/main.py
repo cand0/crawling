@@ -18,25 +18,70 @@ pat_res = re.compile(pattern)
 user_id = pat_res.findall(user_name_raw)
 
 
+###total posts###
+pattern = 'edge_owner_to_timeline_media\":\{\"count\":(.*?),\"'
+pat_res = re.compile(pattern)
+tot_post = pat_res.findall(user_name_raw)
+
 ####Get Source####
 req = requests.get('https://www.instagram.com/graphql/query/?query_hash=e769aa130647d2354c40ea6a439bfc08&variables={"id":"' + str(user_id[0]) + '","first":1000,"after":""}')
 raw = req.text
 
+
 ####pciture crawling###
-pattern = 'display_url\":\"(.*?)\",'
-pat_res = re.compile(pattern)
-picture_res = pat_res.findall(raw)
+pat_pic = 'display_url\":\"(.*?)\",'
+pat_res = re.compile(pat_pic)
+pic_res = pat_res.findall(raw)
 
 ####video crawling###
-pattern = 'video_url\":\"(.*?)\",'
-pat_res = re.compile(pattern)
-video_res = pat_res.findall(raw)
+pat_vid = 'video_url\":\"(.*?)\",'
+pat_res = re.compile(pat_vid)
+vid_res = pat_res.findall(raw)
 
 
 print('Beginning file download...')
 
-for i in range(0, len(picture_res) - 1):
-	urllib.request.urlretrieve(picture_res[i], "./File/" + user_name + "/picture/" + str(user_name)  + str(i + 1) + ".jpeg")
-for i in range(0, len(video_res) - 1):
-	urllib.request.urlretrieve(video_res[1], "./File/" + user_name + "/video/" + str(user_name) + str(i + 1) + ".mp4")
+pic_num = 1
+vid_num = 1
 
+end_cursor = [""]
+for j in range(0, int(int(tot_post[0])/50) + 1):
+	print(str(j) + "번째 진행중 \n")
+	####Get Source####
+	req = requests.get('https://www.instagram.com/graphql/query/?query_hash=e769aa130647d2354c40ea6a439bfc08&variables={"id":"' + str(user_id[0]) + '","first":50,"after":"' + end_cursor[0] + '"}')
+	raw = req.text
+
+        ####pciture crawling###
+	pat_pic = 'display_url\":\"(.*?)\",'
+	pat_res = re.compile(pat_pic)
+	pic_res = pat_res.findall(raw)
+
+        ####video crawling###
+	pat_vid = 'video_url\":\"(.*?)\",'
+	pat_res = re.compile(pat_vid)
+	vid_res = pat_res.findall(raw)
+
+	pat_post = 'end_cursor\":\"(.*?)\"'
+	pat_res = re.compile(pat_post)
+	end_cursor = pat_res.findall(raw)
+
+	for i in range(0, len(pic_res) - 1):
+		urllib.request.urlretrieve(pic_res[i], "./File/" + user_name + "/picture/" + str(user_name)  + str(pic_num + i) + ".jpeg")
+	pic_num = i
+
+	for i in range(0, len(vid_res) - 1):
+		urllib.request.urlretrieve(vid_res[1], "./File/" + user_name + "/video/" + str(user_name) + str(vid_num + i) + ".mp4")
+	vid_num = i
+
+        ####pciture crawling###
+#        pat_pic = 'display_url\":\"(.*?)\",'
+#        pat_res = re.compile(pat_pic)
+#        pic_res = pat_res.findall(raw)
+#
+#        ####video crawling###
+#        pat_vid = 'video_url\":\"(.*?)\",'
+#        pat_res = re.compile(pat_vid)
+#        vid_res = pat_res.findall(raw)
+
+
+###finsish###

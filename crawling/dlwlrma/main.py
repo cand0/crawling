@@ -48,13 +48,34 @@ for i in range(0, int(int(tot_post[0])/50) + 1):
 	pattern = 'end_cursor\":\"(.*?)\"'
 	end_cursor = pat_ext(pattern, raw)	#get next post
 
+	#Remove duplicate URL
+	ol_num = [""]
+	for k in range(0, len(pic_res) - 2):
+		if pic_res[k] == pic_res[k+1]:
+			ol_num.append(k)
+	l = 0
+
+	for k in range(1, len(ol_num) - 1):
+		del pic_res[ol_num[k] - l]
+		l += 1
+
+	ol_num = [""]
+	for k in range(0, len(vid_res) - 2):
+		if vid_res[k] == pic_res[k+1]:
+			ol_num.append(k)
+	l = 0
+	for k in range(1, len(ol_num) - 1):
+		del vid_res[ol_num[k] - 1]
+		l += 1
+
 	####File Download####
 	for j in range(0, len(pic_res)):
 		urllib.request.urlretrieve(pic_res[j], "./File/" + user_name + "/picture/" + str(user_name)  + str(pic_num + j) + ".jpeg")
 	pic_num += j + 1
 
-	for j in range(0, len(vid_res) - 1):
+	for j in range(0, len(vid_res)):
 		urllib.request.urlretrieve(vid_res[j], "./File/" + user_name + "/video/" + str(user_name) + str(vid_num + j) + ".mp4")
 	vid_num += j + 1
 
+os.system('rm -rf /var/www/html/' + user_name)
 os.system('cp -r ./File/* /var/www/html/')	#check with the web

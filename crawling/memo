@@ -30,3 +30,17 @@ URL Deconding			 : https://heavenly-appear.tistory.com/176
 여러가지 Encoding, Decoding(text): https://dencode.com/
 
 ########################################################################################
+
+reference : https://bluese05.tistory.com/13
+
+python list 내에 중복 제거 TIP
+
+set 자료형의 특징
+	1. 중복을 허용하지 않는다. ( removing duplicated ) 
+	2. set 내부에 있는 값(value) 들은 순서가 존재하지 않는다. (unordered)
+
+ex) ex_list = list(set(ex)list))
+
+단, 순서의 형태는 유지하지 못한다.
+
+########################################################################################

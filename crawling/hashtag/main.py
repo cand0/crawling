@@ -1,87 +1,140 @@
+import asyncio
 import requests
-import urllib.request
 import re
+import urllib.request
 import os
-import time
+
+hashtag = ""
+end_cursor = [""]
+main_url = ""
+shortcode = []
+total_post = 0
+
 pic_pattern = 'display_url\":\"(.*?)\"'
 vid_pattern = 'video_url\":\"(.*?)\"'
 tot_pattern = 'edge_hashtag_to_media\":{\"count\":(.*?),\"'
-Scode_pattern = 'shortcode\":\"(.*?)\"'
-Scode_pattern = 'shortcode\":\"(.*?)\"'
-typ_pattern = 'typename\":\"(.*?)\"'
+scode_pattern = 'shortcode\":\"(.*?)\"'
+endcursor_pattern = 'end_cursor\":\"(.*?)\"'
+
+
+#For file management
+def first_setting():
+	global hashtag
+	global total_post
+
+	hashtag = input('\t hashtag 를입력하세요 : ')
+	print("\n\n\t###0 입력시 모든 게시물을 다 불러옵니다.###")
+	total_post = input('\n\t요청할 게시물 수를 입력해 주세요 : ')
+
+	os.system('rm -rf ./File/' + hashtag)
+	os.system('mkdir -p ./File/' + hashtag + '/picture/' + ' ./File/' + hashtag + '/video/')
+
+	main_url_setting([], 0)
+
+#check with the web
+def last_setting():
+	os.system('rm -rf /var/www/html/hashtag/' + hashtag)
+	os.system('cp -r ./File/' + hashtag + ' /var/www/html/hashtag/' + hashtag)
+
 
 def pat_ext(pattern, raw):
-        pat_res = re.compile(pattern)
-        result = pat_res.findall(raw)
-        return result
+	pat_res = re.compile(pattern)
+	result = pat_res.findall(raw)
+	return result
+
+def main_url_setting(end_cursor_data, post_num):
+	global hashtag
+	global main_url
+	global end_cursor
+	end_cursor = end_cursor_data
+
+	if end_cursor == []:
+		end_cursor = [""]
+
+	main_url = 'https://www.instagram.com/graphql/query/?query_hash=90cba7a4c91000cf16207e4f3bee2fa2&variables={"tag_name":"' + hashtag + '","first":' + str(post_num) +',"after":"' + end_cursor[0] + '"}'
+
+def tot_post():
+	global main_url
+	req = requests.get(main_url)
+	raw = req.text
+	total = pat_ext(tot_pattern, raw)
+	return total[0]
+
+async  def get_Scode():
+	global hashtag
+	global end_cursor
+	global main_url
+	global shortcode
+	global total_post
+	total_post = int(total_post)
+
+	#change excess value
+	tot_post_value = int(tot_post())
+	if total_post > tot_post_value:
+		print("\t###총 게시물 수를 초과했습니다. 모든 게시물을 불러옵니다.###")
+		total_post = 0
+	#/change excess value
+
+	i = 0
+	while i < total_post:
+		req = await loop.run_in_executor(None, requests.get, main_url)
+		raw = req.text
+		shortcode += pat_ext(scode_pattern,raw)
+		end_cursor = pat_ext(endcursor_pattern, raw)
+		print("end_cursor, i, total_post ",end_cursor, i, total_post)
+		if i + 50 > total_post:
+			main_url_setting(end_cursor, total_post % 50)
+		else :
+			main_url_setting(end_cursor, 50)
+		i += 50
+
+	if total_post == 0:
+		while True:
+			req = await loop.run_in_executor(None, requests.get, main_url)
+			raw = req.text
+			shortcode += pat_ext(scode_pattern,raw)
+			end_cursor = pat_ext(endcursor_pattern, raw)
+
+			if end_cursor == []:
+				break
+
+	shortcode = list(set(shortcode))
+
+async def get_File():
+	global shortcode
+	global hashtag
+
+	for j in range(0, len(shortcode)):
+		url = 'https://www.instagram.com/p/' + shortcode[j] + '/?__a=1'
+		req = await loop.run_in_executor(None, requests.get, url)
+		raw = req.text
+		pic_url = pat_ext(pic_pattern, raw)
+		vid_url = pat_ext(vid_pattern, raw)
+		await loop.run_in_executor(None, urllib.request.urlretrieve, pic_url[0], "./File/" + hashtag + "/picture/" + str(hashtag) + str(j + 1) + ".jpeg")
+
+		if vid_url == []:
+			continue
+		await loop.run_in_executor(None, urllib.request.urlretrieve, vid_url[0], "./File/" + hashtag + "/video/" + str(hashtag) + str(j + 1) + ".mp4")
 
 
+async def main():
 
-hashtag = input('hashtag 를입력하세요  :')
-os.system('rm -rf ./File/' + hashtag)
-os.system('mkdir -p ./File/' + hashtag + '/picture/' + ' ./File/' + hashtag + '/video/')	#For file management
+	first_setting()
 
+	url_tasks = []
+	download_tasks = []
 
-end_cursor = [""]
-URL = 'https://www.instagram.com/graphql/query/?query_hash=90cba7a4c91000cf16207e4f3bee2fa2&variables={"tag_name":"' + hashtag + '","first":50,"after":"' + end_cursor[0] + '"}'
-tag_req = requests.get(URL)
-tag_raw = tag_req.text
-tot_post = pat_ext(tot_pattern, tag_raw)
+	print("extraction url...")
+	url_tasks.append(asyncio.ensure_future(get_Scode()))
+	await asyncio.gather(*url_tasks)
 
+	print("download file...")
+	download_tasks.append(asyncio.ensure_future(get_File()))
+	await asyncio.gather(*download_tasks)
 
-print('Beginning extraction URL...')
+	print("wait...")
+	last_setting()
 
-
-pic_URL = [""]
-vid_URL = [""]
-start = time.time()
-for i in range(0, int(int(tot_post[0])/50) + 1):
-	S_code = pat_ext(Scode_pattern, tag_raw)
-	for k in range(0, len(S_code)):
-		S_URL =  'https://www.instagram.com/p/' + S_code[k] + '/?__a=1'
-		S_req = requests.get(S_URL)
-		S_raw = S_req.text
-		S_type = pat_ext(typ_pattern, S_raw)
-		pic_URL = pic_URL + pat_ext(pic_pattern, S_raw)
-		vid_URL = vid_URL + pat_ext(vid_pattern, S_raw)
-	print("Beginning extraction ULR...", i + 1, "/", int(int(tot_post[0])/50) + 1)
-
-print("duplication delete ...")
-####duplication delete####
-j = 1
-i = 0
-
-olpic_num = [""]
-for i in range(0, len(pic_URL) - 2):
-	for j in range(i + 1, len(pic_URL)):
-		if pic_URL[i] == pic_URL[j]:
-			olpic_num.append(i)
-			break
-j = 0
-for i in range(1, len(olpic_num) - 1):
-	del pic_URL[olpic_num[i] - j]
-	j += 1
-
-olvid_num = [""]
-for i in range(0, len(vid_URL) - 2):
-	for j in range(i + 1, len(vid_URL)):
-		if vid_URL[i] == vid_URL[j]:
-			olvid_num.append(i)
-			break
-
-j = 0
-for i in range(1, len(olvid_num) - 1):
-        del vid_URL[olvid_num[i] - j]
-        j += 1
-
-####File Download####
-
-print("Beginning file download...")
-for j in range(1, len(pic_URL)):
-	urllib.request.urlretrieve(pic_URL[j], "./File/" + hashtag + "/picture/" + str(hashtag)  + str(j) + ".jpeg")
-
-for j in range(1, len(vid_URL)):
-	urllib.request.urlretrieve(vid_URL[j], "./File/" + hashtag + "/video/" + str(hashtag) + str(j) + ".mp4")
-
-os.system('rm -rf /var/www/html/hashtag/' + hashtag)
-os.system('cp -r ./File/* /var/www/html/hashtag/')	#check with the web
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
+loop.close()

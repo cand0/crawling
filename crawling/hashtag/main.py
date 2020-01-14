@@ -16,7 +16,6 @@ tot_pattern = 'edge_hashtag_to_media\":{\"count\":(.*?),\"'
 scode_pattern = 'shortcode\":\"(.*?)\"'
 endcursor_pattern = 'end_cursor\":\"(.*?)\"'
 
-
 #For file management
 def first_setting():
 	global hashtag
@@ -81,7 +80,6 @@ async  def get_Scode():
 		raw = req.text
 		shortcode += pat_ext(scode_pattern,raw)
 		end_cursor = pat_ext(endcursor_pattern, raw)
-		print("end_cursor, i, total_post ",end_cursor, i, total_post)
 		if i + 50 > total_post:
 			main_url_setting(end_cursor, total_post % 50)
 		else :

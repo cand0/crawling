@@ -1,37 +1,33 @@
 import requests
 import re
 import os
-
+import asyncio
 
 def GetRequest(option):
 	if option == 1:
-		user_name = input('\n\n\t###아이디를 입력해 주세요###\n\tinput:')
-	return user_name
+		return input('\n\n\t###아이디를 입력해 주세요###\n\tinput:')
+	elif option == 2:
+		return input('\n\n\t###hashtag를 입력해 주세요###\n\tinput:')
 
 
 def RequestPost(total_post):
 	print("\n\t###0 입력시 모든 게시물을 불러옵니다.###")
 	request_post = int(input('\t###게시물 수를 입력해 주세요###\n\tinput: '))
 
-	overlap_value = int(input("\n\t###중복 값 제거 설정###\n\t###1을 입력하면 중복값이 제거가 됩니다.###\n\tinput : "))
-
 	if request_post == 0 or request_post >= total_post:
-		return 0, overlap_value
+		print("\###모든 게시물을 불러옵니다.###")
+		return 0
 	else:
-		return request_post, overlap_value
-
-def SettingRaw(user_name):
-	req = requests.get('https://www.instagram.com/' + user_name + '?__a=1')
-	raw = req.text
-	return raw
-
+		return request_post
 
 def PatExt(option, pattern, raw):
 	pattern_dic = {
 			'pic_pattern' : 'display_url\":\"(.*?)\"',
 			'vid_pattern' : 'video_url\":\"(.*?)\"',
 			'tot_pattern' : 'edge_owner_to_timeline_media\":\{\"count\":(.*?),\"',
+			'hashtag_tot_pattern' : 'edge_hashtag_to_media\":{\"count\":(.*?),\"',
 			'endcursor_pattern' : 'end_cursor\":\"(.*?)\"',
+			'scode_pattern' : 'shortcode\":\"(.*?)\"',
 			'ID_pattern' : 'profilePage_(.*?)\"'
 			}
 
@@ -48,19 +44,60 @@ def PatExt(option, pattern, raw):
 		return result[0]
 
 
-def FileSetting(option, user_name):
+def FileSetting(option, value):
+	#profile file management
 	if option == 1:
-		os.system('rm -rf ./File/' + user_name)
-		os.system('mkdir -p ./File/' + user_name + '/picture/' + ' ./File/' + user_name + '/video/')
+		os.system('rm -rf ./File/profile/' + value)
+		os.system('mkdir -p ./File/profile/' + value + '/picture/' + ' ./File/profile/' + value + '/video/')
 	elif option == 2:
-		os.system('rm -rf /var/www/html/profile/' + user_name)
-		os.system('cp -r ./File/' + user_name + ' /var/www/html/profile/' + user_name)
+		os.system('rm -rf /var/www/html/profile/' + value)
+		os.system('mkdir -p /var/www/html/profile/')
+		os.system('cp -r ./File/profile/' + value + ' /var/www/html/profile/')
+	#hashtag file management
+	elif option == 3:
+		os.system('rm -rf ./File/hashtag/' + value)
+		os.system('mkdir -p ./File/hashtag/' + value + '/picture/' + ' ./File/hashtag/' + value + '/video/')
+	elif option == 4:
+		os.system('rm -rf /var/www/html/hashtag/' + value)
+		os.system('mkdir -p /var/www/html/hashtag/')
+		os.system('cp -r ./File/hashtag/' + value + ' /var/www/html/hashtag/')
 	else:
 		print("error")
 
-#async def ProfileLoop(user_ID, end_cursor):
-#	req = await loop.run_in_executor(None, requests.get, 'https://www.instagram.com/graphql/query/?query_hash=e769aa130647d2354c40ea6a439bfc08&variables={"id":"' + str(user_ID) + '","first":50,"after":"' + end_cursor[0] + '"}')
-#	raw = req.text
-#	pic_res += PatExt(1, 'pic_pattern', raw)        #picture crawling
-#	vid_res += PatExt(1, 'vid_pattern', raw)        #video crawling
-#	end_cursor = PatExt(1, 'endcursor_pattern', raw)        #get next post)
+async def GetScode(loop, hashtag):
+	#shortcode variable setting
+	shortcode = []
+	end_cursor = [""]
+
+	url = 'https://www.instagram.com/graphql/query/?query_hash=90cba7a4c91000cf16207e4f3bee2fa2&variables={"tag_name":"' + str(hashtag) + '","first":' + '50' +',"after":"' + end_cursor[0] + '"}'
+	req = requests.get(url)
+	raw = req.text
+
+	total_post = PatExt(1, "hashtag_tot_pattern", raw)
+	total_post = int(total_post[0])
+	request_post = RequestPost(total_post)
+	overlap_value = int(input("\n\t###중복 값 제거 설정###\n\t###1을 입력하면 중복값이 제거가 됩니다.###\n\tinput : "))
+
+	if request_post == 0:
+		request_post1 = int(total_post/50)
+		request_post2 = int(total_post%50)
+	else :
+		request_post1 = int(request_post/50)
+		request_post2 = int(request_post%50)
+
+	#get scode
+	for i in range(request_post1):
+		req = await loop.run_in_executor(None, requests.get, url)
+		raw = req.text
+		shortcode += PatExt(1, "scode_pattern", raw)
+		end_cursor = PatExt(1, "endcursor_pattern", raw)
+	if request_post2 != 0:
+		url = 'https://www.instagram.com/graphql/query/?query_hash=90cba7a4c91000cf16207e4f3bee2fa2&variables={"tag_name":"' + str(hashtag) + '","first":' + str(request_post2) +',"after":"' + end_cursor[0] + '"}'
+		req = await loop.run_in_executor(None, requests.get, url)
+		raw = req.text
+		shortcode += PatExt(1, "scode_pattern", raw)
+
+	if (overlap_value == 1):
+		shortcode = list(set(shortcode))
+	return shortcode
+

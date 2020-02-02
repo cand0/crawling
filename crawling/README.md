@@ -1,4 +1,4 @@
 python-crawling
 
 	crawling
-		-dlwlrma		#아이유 사진 crawling
+		-main.py		#Profile And Hashtag crawling
